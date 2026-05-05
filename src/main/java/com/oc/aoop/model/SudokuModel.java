@@ -12,7 +12,12 @@ import java.util.Random;
 
 /**
  * Model for the Sudoku game.
- * This class stores all game state and enforces Sudoku rules.
+ *
+ * @invariant board != null && initialBoard != null && solutionBoard != null;
+ * @invariant board.length == 9 && initialBoard.length == 9 && solutionBoard.length == 9;
+ * @invariant all rows in board, initialBoard and solutionBoard have length 9;
+ * @invariant all cell values are between 0 and 9;
+ * @invariant fixed cells in board always equal the corresponding cells in initialBoard;
  */
 @SuppressWarnings("deprecation")
 public class SudokuModel extends Observable implements SudokuModelInterface {
@@ -30,12 +35,25 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
     private boolean hintEnabled = true;
     private boolean randomPuzzleEnabled = false;
 
+    /**
+     * @requires puzzles.txt exists in the project root;
+     * @requires puzzles.txt contains at least one valid 81-character puzzle line;
+     * @ensures invariant();
+     * @ensures board is initialised from one puzzle in puzzles.txt;
+     * @ensures initialBoard equals the loaded puzzle;
+     * @ensures solutionBoard contains a solved version of the loaded puzzle if solvable;
+     */
     public SudokuModel() {
         loadPuzzlesFromFile();
         loadPuzzle(selectPuzzleIndex());
         assert invariant() : "Model invariant failed after construction";
     }
 
+    /**
+     * @requires true;
+     * @ensures \result == true iff the board, initialBoard and solutionBoard
+     *          have valid dimensions, valid cell values and fixed cells are unchanged;
+     */
     public boolean invariant() {
         return hasExpectedShape(board)
                 && hasExpectedShape(initialBoard)
@@ -46,24 +64,49 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
                 && fixedCellsHaveNotChanged();
     }
 
+    /**
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @ensures \result == board[row][col];
+     * @ensures 0 <= \result && \result <= 9;
+     */
     @Override
     public int getCellValue(int row, int col) {
         assert isValidPosition(row, col) : "row and col must be between 0 and 8";
         return board[row][col];
     }
 
+    /**
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @ensures \result == !isFixedCell(row, col);
+     */
     @Override
     public boolean isFixedCell(int row, int col) {
         assert isValidPosition(row, col) : "row and col must be between 0 and 8";
         return initialBoard[row][col] != EMPTY_CELL;
     }
 
+    /**
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @ensures \result == !isFixedCell(row, col);
+     */
     @Override
     public boolean isEditableCell(int row, int col) {
         assert isValidPosition(row, col) : "row and col must be between 0 and 8";
         return !isFixedCell(row, col);
     }
 
+    /**
+     * @requires invariant();
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @requires 1 <= value && value <= 9;
+     * @ensures isFixedCell(row, col) ==> \result == false;
+     * @ensures !isFixedCell(row, col) && \result ==> getCellValue(row, col) == value;
+     * @ensures invariant();
+     */
     @Override
     public boolean setCellValue(int row, int col, int value) {
         assert invariant() : "Invariant must hold before setting a cell";
@@ -88,6 +131,14 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return true;
     }
 
+    /**
+     * @requires invariant();
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @ensures isFixedCell(row, col) ==> \result == false;
+     * @ensures !isFixedCell(row, col) && \result ==> getCellValue(row, col) == EMPTY_CELL;
+     * @ensures invariant();
+     */
     @Override
     public boolean clearCell(int row, int col) {
         assert invariant() : "Invariant must hold before clearing a cell";
@@ -112,6 +163,12 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return true;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures \result == false || invariant();
+     * @ensures \result ==> the most recent editable-cell change is reverted;
+     * @ensures fixed cells remain unchanged;
+     */
     @Override
     public boolean undo() {
         assert invariant() : "Invariant must hold before undo";
@@ -133,6 +190,13 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return true;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures !isHintEnabled() ==> \result == false;
+     * @ensures \result ==> one previously empty editable cell contains its solution value;
+     * @ensures \result ==> invariant();
+     * @ensures fixed cells remain unchanged;
+     */
     @Override
     public boolean giveHint() {
         assert invariant() : "Invariant must hold before giving a hint";
@@ -163,6 +227,12 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return false;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures for all valid row and col:
+     *          getCellValue(row, col) == initialBoard[row][col];
+     * @ensures invariant();
+     */
     @Override
     public void reset() {
         assert invariant() : "Invariant must hold before reset";
@@ -174,6 +244,13 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         assert invariant() : "Invariant must hold after reset";
     }
 
+    /**
+     * @requires invariant();
+     * @requires puzzles is not empty;
+     * @ensures board is loaded from puzzles.txt;
+     * @ensures initialBoard equals the newly loaded puzzle;
+     * @ensures invariant();
+     */
     @Override
     public void newGame() {
         assert invariant() : "Invariant must hold before new game";
@@ -184,11 +261,20 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         assert invariant() : "Invariant must hold after new game";
     }
 
+    /**
+     * @requires invariant();
+     * @ensures \result == true iff there are no duplicate non-zero values
+     *          in any row, column or 3x3 box;
+     */
     @Override
     public boolean isBoardValid() {
         return isBoardValid(board);
     }
 
+    /**
+     * @requires invariant();
+     * @ensures \result == true iff the board has no empty cells and isBoardValid() is true;
+     */
     @Override
     public boolean isBoardComplete() {
         if (!isBoardValid()) {
@@ -206,6 +292,12 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return true;
     }
 
+    /**
+     * @requires 0 <= row && row < BOARD_SIZE;
+     * @requires 0 <= col && col < BOARD_SIZE;
+     * @ensures getCellValue(row, col) == EMPTY_CELL ==> \result == false;
+     * @ensures \result == true iff the cell value is duplicated in its row, column or 3x3 box;
+     */
     @Override
     public boolean hasConflictAt(int row, int col) {
         if (!isValidPosition(row, col)) {
@@ -244,33 +336,60 @@ public class SudokuModel extends Observable implements SudokuModelInterface {
         return false;
     }
 
+    /**
+     * @requires true;
+     * @ensures \result == validationFeedbackEnabled;
+     */
     @Override
     public boolean isValidationFeedbackEnabled() {
         return validationFeedbackEnabled;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures isValidationFeedbackEnabled() == enabled;
+     * @ensures invariant();
+     */
     @Override
     public void setValidationFeedbackEnabled(boolean enabled) {
         validationFeedbackEnabled = enabled;
         notifyModelChanged();
     }
 
+    /**
+     * @requires true;
+     * @ensures \result == hintEnabled;
+     */
     @Override
     public boolean isHintEnabled() {
         return hintEnabled;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures isHintEnabled() == enabled;
+     * @ensures invariant();
+     */
     @Override
     public void setHintEnabled(boolean enabled) {
         hintEnabled = enabled;
         notifyModelChanged();
     }
 
+    /**
+     * @requires true;
+     * @ensures \result == randomPuzzleEnabled;
+     */
     @Override
     public boolean isRandomPuzzleEnabled() {
         return randomPuzzleEnabled;
     }
 
+    /**
+     * @requires invariant();
+     * @ensures isRandomPuzzleEnabled() == enabled;
+     * @ensures invariant();
+     */
     @Override
     public void setRandomPuzzleEnabled(boolean enabled) {
         randomPuzzleEnabled = enabled;

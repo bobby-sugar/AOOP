@@ -75,6 +75,10 @@ public class SudokuCLIApp {
                     handleNewGame(parts);
                     break;
 
+                case "random":
+                    handleRandom(parts);
+                    break;
+
                 case "quit":
                 case "exit":
                     running = false;
@@ -98,6 +102,8 @@ public class SudokuCLIApp {
         System.out.println("  hint                 Reveal one correct value if hints are enabled.");
         System.out.println("  reset                Restore the current puzzle to its initial state.");
         System.out.println("  new                  Start a new game.");
+        System.out.println("  random on            Enable random puzzle selection for new games.");
+        System.out.println("  random off           Disable random puzzle selection and use the fixed puzzle.");
         System.out.println("  quit                 Exit the program.");
         System.out.println();
         System.out.println("Rows and columns are numbered from 1 to 9.");
@@ -241,8 +247,33 @@ public class SudokuCLIApp {
         }
 
         model.newGame();
-        System.out.println("New game loaded.");
+
+        if (model.isRandomPuzzleEnabled()) {
+            System.out.println("New random game loaded.");
+        } else {
+            System.out.println("Fixed puzzle loaded.");
+        }
+
         printBoard();
+    }
+
+    private void handleRandom(String[] parts) {
+        if (parts.length != 2) {
+            System.out.println("Usage: random on/off");
+            return;
+        }
+
+        if ("on".equalsIgnoreCase(parts[1])) {
+            model.setRandomPuzzleEnabled(true);
+            System.out.println("Random puzzle selection enabled.");
+            System.out.println("Type 'new' to load a random puzzle.");
+        } else if ("off".equalsIgnoreCase(parts[1])) {
+            model.setRandomPuzzleEnabled(false);
+            System.out.println("Random puzzle selection disabled.");
+            System.out.println("Type 'new' to load the fixed puzzle.");
+        } else {
+            System.out.println("Usage: random on/off");
+        }
     }
 
     private void checkCompletion() {
